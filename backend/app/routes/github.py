@@ -6,19 +6,24 @@ from app.services.github_service import (
     calculate_language_frequency,
     get_top_repos,
     get_user_repositories,
-    get_user
+    get_user,
+    get_user_analytics
 )
 from app.schemas.github import UserResponse
+
 
 
 router = APIRouter()
 # ==================== info about the user ( followers , following , etc) ======================
 
-@router.get("/github/{username}" , response_model=UserResponse)
-def get_github_user(username: str) -> UserResponse:
+@router.get("/github/{username}", response_model=UserResponse)
+def get_github_user(username: str):
     data = get_user(username)
-    if data is None:
-        return {"error": "User not found"}
+    
+    if data is None or "error" in data:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="User not found")
+    
     return UserResponse(
         username=data["login"],
         name=data["name"],
@@ -95,10 +100,11 @@ def get_top_repositories(username : str):
     repository_data = []
     for repo in top_repos:
         repository_data.append({
-            "name" : repo["name"],
-            "stars" : repo["stargazers_count"],
-            "forks" : repo["forks_count"],
-            "language" :repo["language"]
+            "name": repo["name"],
+            "stars": repo["stargazers_count"],
+            "forks": repo["forks_count"],
+            "language": repo["language"],
+            "url": repo["html_url"]
         })
     return {
         "top_repositories": repository_data[:5]
@@ -149,6 +155,10 @@ def get_github_stats(username : str):
         "total_forks": calculate_total_forks(repos),
         "most_used_language": most_used_language
     }
+
+@router.get("/github_analytics/{username}")
+def github_analytics(username: str):
+    return get_user_analytics(username)
          
 
 

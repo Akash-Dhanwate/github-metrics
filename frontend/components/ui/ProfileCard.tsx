@@ -1,4 +1,4 @@
-interface ProfileCardProps{
+interface ProfileCardProps {
     avatar: string
     name: string
     username: string
@@ -8,27 +8,39 @@ interface ProfileCardProps{
     profile_url: string
 }
 
-function ProfileCard (props: ProfileCardProps) {
+function ProfileCard(props: ProfileCardProps) {
     return (
-        <div>
-            <div className="flex gap-50">
-                <div className="mb-6">
-                    <img className="w-32 h-32 rounded-full " src={props.avatar} alt={`${props.name}'s profile image`}/>
+        <div className="bg-white rounded-lg border border-gray-200 p-8 shadow-sm">
+            <div className="flex items-start gap-6">
+                <img 
+                    src={props.avatar} 
+                    alt={props.name}
+                    className="w-24 h-24 rounded-full"
+                />
+                <div className="flex-1">
+                    <h2 className="text-2xl font-bold text-gray-900">{props.name}</h2>
+                    <p className="text-gray-600">@{props.username}</p>
+                    <div className="flex gap-6 mt-4">
+                        <div>
+                            <p className="text-2xl font-bold">{props.followers}</p>
+                            <p className="text-gray-600 text-sm">Followers</p>
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold">{props.following}</p>
+                            <p className="text-gray-600 text-sm">Following</p>
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold">{props.public_repos}</p>
+                            <p className="text-gray-600 text-sm">Repos</p>
+                        </div>
+                    </div>
                 </div>
-                <div className="border rounded-lg mb-6 gap-6 p-6">
-                    <h3>Name: {props.name}</h3>
-                    <p>Username: {props.username}</p>
-                </div>
-            
-                <div className="border rounded-lg gap-6 mb-6 p-4">
-                    <p>Followers: {props.followers}</p>
-                    <p>Following: {props.following}</p>
-                    <p>Public Repositories: {props.public_repos}</p>
-                </div>
-            </div>
-            <div className="border rounded-lg mb-6 p-6">
-                <a href={props.profile_url} target="_blank" rel="noopener noreferrer">
-                    GitHub Profile
+                <a 
+                    href={props.profile_url}
+                    target="_blank"
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                >
+                    Visit Profile
                 </a>
             </div>
         </div>
