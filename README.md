@@ -60,11 +60,11 @@ Whether you're preparing for technical interviews, tracking your open-source con
 
 ### Profile Analytics
 
-![Profile Analytics](images/contribution.png)
+![Profile Analytics](images/contributio.png)
 
 ### Developer Comparison
 
-![Developer Comparison](images/dashbord.png)
+![Developer Comparison](images/dashboard.png)
 
 ### Trending Repositories & Users
 
