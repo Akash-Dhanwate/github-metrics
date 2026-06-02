@@ -7,7 +7,12 @@ from app.services.github_service import (
     get_top_repos,
     get_user_repositories,
     get_user,
-    get_user_analytics
+    get_user_analytics,
+    get_user_contribution_data,
+    get_user_badges,
+    get_trending_repositories,
+    get_trending_users,
+    get_repo_insights
 )
 from app.schemas.github import UserResponse
 
@@ -160,7 +165,34 @@ def get_github_stats(username : str):
 def github_analytics(username: str):
     return get_user_analytics(username)
          
+@router.get("/github/{username}/contributions")
+def get_contributions(username: str):
+    data = get_user_contribution_data(username)
+    badges = get_user_badges(username)
+    
+    return {
+        "username": username,
+        "contributions": data,
+        "badges": badges
+    }
+    
+@router.get("/trending/repositories")
+def get_trending_repos():
+    """Get trending repositories"""
+    repos = get_trending_repositories()
+    return {"repositories": repos}
 
 
-    
-    
+@router.get("/trending/users")
+def get_trending_users_endpoint():
+    """Get trending users"""
+    users = get_trending_users()
+    return {"users": users}
+
+@router.get("/repo/{username}/{repo_name}")
+def get_repo_details(username: str, repo_name: str):
+    """Get repository insights"""
+    insights = get_repo_insights(username, repo_name)
+    if not insights:
+        raise HTTPException(status_code=404, detail="Repository not found")
+    return insights

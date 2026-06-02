@@ -1,149 +1,186 @@
 "use client"
-import { useState, useEffect } from "react"
-import SearchBar from "@/components/ui/SearchBar"
-import { useParams } from "next/navigation"
+
+import { useEffect, useState } from "react"
+import Link from "next/link"
+import { useParams, useRouter } from "next/navigation"
+import { ArrowLeft, GitBranch, GitFork, Loader2, Search, Star, Users } from "lucide-react"
+
+import Achievements from "@/components/dashboard/Achievements"
+import ContributionGraph from "@/components/dashboard/ContributionGraph"
+import ExportStats from "@/components/dashboard/ExportStats"
+import ProfileSidebar from "@/components/dashboard/ProfileSidebar"
+import PopularUsers from "@/components/home/PopularUsers"
+import TrendingRepos from "@/components/home/TrendingRepos"
+import RepoCard from "@/components/ui/RepoCard"
+import RepoInsights from "@/components/ui/RepoInsights"
 import StatsCard from "@/components/ui/StatsCard"
-import ProfileCard from "@/components/ui/ProfileCard"
-import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from 'recharts'
+import type { GithubProfile, Repository } from "@/lib/types"
 
 export default function DashboardPage() {
-    const params = useParams()
-    const [data, setData] = useState<any>(null)
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
+  const params = useParams<{ username: string }>()
+  const router = useRouter()
+  const [data, setData] = useState<GithubProfile | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [searchUsername, setSearchUsername] = useState("")
+  const [searching, setSearching] = useState(false)
 
-    useEffect(() => {
-        async function fetchData() {
-            try {
-                setLoading(true)
-                const response = await fetch(
-                    `${process.env.NEXT_PUBLIC_API_URL}/github_analytics/${params.username}`
-                )
-                if (!response.ok) throw new Error("User not found")
-                const result = await response.json()
-                setData(result)
-                setError(null)
-            } catch (err: any) {
-                setError(err.message)
-                setData(null)
-            } finally {
-                setLoading(false)
-            }
-        }
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true)
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/github_analytics/${params.username}`)
 
-        if (params.username) fetchData()
-    }, [params.username])
+        if (!response.ok) throw new Error("User not found")
 
-    if (loading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>
-    if (error) return <div className="flex items-center justify-center min-h-screen text-red-600">Error: {error}</div>
-    if (!data) return <div className="flex items-center justify-center min-h-screen">No data</div>
-    if (loading) return (
-    <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p>Loading user data...</p>
-        </div>
-    </div>
-)
+        const result = await response.json()
+        setData(result)
+        setSearchUsername(result.username)
+        setError(null)
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to load profile")
+        setData(null)
+      } finally {
+        setLoading(false)
+      }
+    }
 
-if (error) return (
-    <div className="min-h-screen bg-gray-50">
-        <div className="max-w-6xl mx-auto p-6">
-            <SearchBar />
-            <div className="bg-red-50 border border-red-200 rounded-lg p-6 mt-8">
-                <h2 className="text-red-900 font-bold text-lg mb-2">❌ Error</h2>
-                <p className="text-red-800 mb-4">{error}</p>
-                <p className="text-red-700 text-sm">Try searching for another user or check the username spelling</p>
-            </div>
-        </div>
-    </div>
-)
+    if (params.username) fetchData()
+  }, [params.username])
 
-if (!data) return (
-    <div className="min-h-screen bg-gray-50">
-        <div className="max-w-6xl mx-auto p-6">
-            <SearchBar />
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mt-8">
-                <p className="text-yellow-800">No data available</p>
-            </div>
-        </div>
-    </div>
-)
-    const languageData = Object.entries(data.languages).map(([name, value]) => ({
-        name,
-        value
-    }))
-    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
+  const handleSearch = async () => {
+    const nextUsername = searchUsername.trim().replace(/^@/, "")
+    if (!nextUsername) return
+
+    setSearching(true)
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/github/${nextUsername}`)
+      if (!response.ok) {
+        setError("User not found")
+        return
+      }
+
+      router.push(`/dashboard/${nextUsername}`)
+    } catch {
+      setError("API is not reachable")
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  if (loading) {
     return (
-        <div className="min-h-screen bg-gray-50">
-            <div className="max-w-6xl mx-auto p-6">
-                <SearchBar />
-                {/* Profile Section */}
-                <ProfileCard
-                    avatar={data.avatar_url}
-                    name={data.name}
-                    username={data.username}
-                    followers={data.followers}
-                    following={data.following}
-                    public_repos={data.public_repos}
-                    profile_url={data.profile_url}
-                />
-
-                {/* Stats Section */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-8">
-                    <StatsCard title="Repositories" value={data.public_repos} />
-                    <StatsCard title="Total Stars" value={data.total_stars} />
-                    <StatsCard title="Total Forks" value={data.total_forks} />
-                    <StatsCard title="Top Language" value={Object.keys(data.languages)[0] || "N/A"} />
-                </div>
-
-                {/* Two Column Layout */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-                    {/* Languages Chart */}
-                    <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-                        <h2 className="text-lg font-bold text-gray-900 mb-4">Languages</h2>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <PieChart>
-                                <Pie
-                                    data={languageData}
-                                    cx="50%"
-                                    cy="50%"
-                                    labelLine={false}
-                                    label={({ name, value }: { name?: string; value?: number }) => `${name}: ${value}`}
-                                    outerRadius={80}
-                                    dataKey="value"
-                                >
-                                    {languageData.map((_, index) => (
-                                        <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip />
-                                <Legend />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-
-                    {/* Top Repos Summary */}
-                    <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-                        <h2 className="text-lg font-bold text-gray-900 mb-4">Top Repositories</h2>
-                        <div className="space-y-3">
-                            {data.top_repositories.map((repo: any) => (
-                                <div key={repo.name} className="border-b pb-3">
-                                    <a href={repo.url} rel="noopener noreferrer" target="_blank" className="font-semibold text-blue-600 hover:underline">
-                                        {repo.name}
-                                    </a>
-                                    <div className="flex gap-4 text-sm text-gray-600 mt-1">
-                                        <span>⭐ {repo.stars}</span>
-                                        <span>🍴 {repo.forks}</span>
-                                        <span>💻 {repo.language}</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </div>
+      <div className="flex min-h-screen items-center justify-center bg-[#0d1117] px-4 text-[#8b949e]">
+        <div className="text-center">
+          <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-[#3fb950]" />
+          <p>Loading profile analytics...</p>
         </div>
-
+      </div>
     )
+  }
+
+  if (error || !data) {
+    return (
+      <div className="min-h-screen bg-[#0d1117] px-4 py-8">
+        <div className="mx-auto max-w-2xl rounded-lg border border-[#f85149]/30 bg-[#f85149]/10 p-6 text-center">
+          <h1 className="text-xl font-semibold text-[#ff7b72]">Profile unavailable</h1>
+          <p className="mt-2 text-[#ffb3ad]">{error || "No data returned."}</p>
+          <Link
+            href="/"
+            className="mt-6 inline-flex items-center gap-2 rounded-md bg-[#238636] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#2ea043]"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back home
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  const topLanguage = Object.keys(data.languages || {})[0] || "N/A"
+
+  return (
+    <div className="min-h-screen bg-[#0d1117] text-[#e6edf3]">
+      <header className="sticky top-0 z-30 border-b border-[#30363d] bg-[#010409]/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:px-8">
+          <div className="flex items-center justify-between gap-3">
+            <Link href="/" className="flex items-center gap-2 text-sm font-semibold">
+              <GitBranch className="h-5 w-5" />
+              GitHub Metrics
+            </Link>
+            <Link href="/compare" className="rounded-md px-3 py-2 text-sm text-[#8b949e] transition hover:bg-[#21262d] hover:text-[#e6edf3]">
+              Compare
+            </Link>
+          </div>
+
+          <div className="flex flex-1 flex-col gap-2 sm:flex-row lg:ml-auto lg:max-w-xl">
+            <label className="relative flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8b949e]" />
+              <input
+                type="text"
+                placeholder="Search another user"
+                value={searchUsername}
+                onChange={(event) => setSearchUsername(event.target.value)}
+                onKeyDown={(event) => event.key === "Enter" && handleSearch()}
+                className="h-10 w-full rounded-md border border-[#30363d] bg-[#0d1117] pl-10 pr-3 text-sm text-[#e6edf3] placeholder:text-[#8b949e] focus:border-[#3fb950] focus:ring-2 focus:ring-[#3fb950]/30"
+              />
+            </label>
+            <button
+              onClick={handleSearch}
+              disabled={searching}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#238636] px-4 text-sm font-semibold text-white transition hover:bg-[#2ea043] disabled:opacity-60"
+            >
+              {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+              Search
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:px-8 xl:grid-cols-[300px_1fr]">
+        <ProfileSidebar data={data} />
+
+        <div className="space-y-6">
+          <section>
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-sm text-[#8b949e]">Dashboard</p>
+                <h1 className="text-2xl font-semibold text-[#e6edf3] sm:text-3xl">{data.name || data.username}</h1>
+              </div>
+              <ExportStats data={data} />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <StatsCard title="Repositories" value={data.public_repos} icon={GitBranch} />
+              <StatsCard title="Total stars" value={data.total_stars ?? 0} icon={Star} />
+              <StatsCard title="Total forks" value={data.total_forks ?? 0} icon={GitFork} />
+              <StatsCard title="Top language" value={topLanguage} icon={Users} />
+            </div>
+          </section>
+
+          <Achievements username={data.username} />
+          <ContributionGraph username={data.username} />
+          <RepoInsights username={data.username} repositories={data.top_repositories || []} />
+
+          <section className="rounded-lg border border-[#30363d] bg-[#161b22] p-5">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-[#e6edf3]">Popular Repositories</h2>
+                <p className="mt-1 text-sm text-[#8b949e]">Ranked by stars and forks from the profile analytics endpoint.</p>
+              </div>
+            </div>
+            <div className="grid gap-3">
+              {(data.top_repositories || []).map((repo: Repository) => (
+                <RepoCard key={repo.name} repo={repo} />
+              ))}
+            </div>
+          </section>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <PopularUsers />
+            <TrendingRepos />
+          </div>
+        </div>
+      </main>
+    </div>
+  )
 }
