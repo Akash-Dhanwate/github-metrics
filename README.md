@@ -60,11 +60,19 @@ Whether you're preparing for technical interviews, tracking your open-source con
 
 ### Profile Analytics
 
+<<<<<<< HEAD
 ![Profile Analytics](images/profile.png)
 
 ### Developer Comparison
 
 ![Developer Comparison](images/compare1.png)
+=======
+![Profile Analytics](images/contributio.png)
+
+### Developer Comparison
+
+![Developer Comparison](images/dashboard.png)
+>>>>>>> 7ad789f4d8ddccf07c4e48ce5fabd555eccddc84
 
 ### Trending Repositories & Users
 
