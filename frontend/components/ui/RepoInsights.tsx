@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { ExternalLink, GitPullRequest, HardDrive, Scale, Star, type LucideIcon } from "lucide-react"
+import { apiGet } from "@/lib/api"
 import type { Repository } from "@/lib/types"
 
 interface RepoInsightsProps {
@@ -20,8 +21,7 @@ export default function RepoInsights({ username, repositories = [] }: RepoInsigh
     setInsights(null)
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/repo/${username}/${repoName}`)
-      const data = await response.json()
+      const data = await apiGet<Repository>(`/repo/${username}/${repoName}`, 5 * 60_000)
       setInsights(data)
     } catch (err) {
       console.error(err)

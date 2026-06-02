@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useState } from "react"
+import { apiGet } from "@/lib/api"
 import type { Badge } from "@/lib/types"
 
 interface BadgesDisplayProps {
@@ -11,20 +12,23 @@ export default function BadgesDisplay({ username }: BadgesDisplayProps) {
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
+        let cancelled = false
+
         async function fetchBadges() {
             try {
-                const response = await fetch(
-                    `${process.env.NEXT_PUBLIC_API_URL}/github/${username}/contributions`
-                )
-                const result = await response.json()
-                setBadges(result.badges || [])
+                const result = await apiGet<{ badges?: Badge[] }>(`/github/${username}/contributions`, 5 * 60_000)
+                if (!cancelled) setBadges(result.badges || [])
             } catch (err) {
                 console.error(err)
             } finally {
-                setLoading(false)
+                if (!cancelled) setLoading(false)
             }
         }
         fetchBadges()
+
+        return () => {
+            cancelled = true
+        }
     }, [username])
 
     if (loading) return <div>Loading badges...</div>

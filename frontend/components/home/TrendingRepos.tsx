@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { GitFork, Flame, Star } from "lucide-react"
+import { apiGet } from "@/lib/api"
 import type { Repository } from "@/lib/types"
 
 export default function TrendingRepos() {
@@ -9,19 +10,24 @@ export default function TrendingRepos() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let cancelled = false
+
     async function fetchTrending() {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/trending/repositories`)
-        const data = await response.json()
-        setRepos(data.repositories || [])
+        const data = await apiGet<{ repositories?: Repository[] }>("/trending/repositories", 5 * 60_000)
+        if (!cancelled) setRepos(data.repositories || [])
       } catch (err) {
         console.error(err)
-        setRepos([])
+        if (!cancelled) setRepos([])
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
     fetchTrending()
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   return (

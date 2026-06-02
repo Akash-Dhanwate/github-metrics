@@ -55,3 +55,17 @@ export interface ContributionCalendar {
   totalContributions: number
   weeks: ContributionWeek[]
 }
+
+export interface ContributionsResponse {
+  username: string
+  contributions?: {
+    data?: {
+      user?: {
+        contributionsCollection?: {
+          contributionCalendar?: ContributionCalendar
+        }
+      }
+    }
+  }
+  badges?: Badge[]
+}

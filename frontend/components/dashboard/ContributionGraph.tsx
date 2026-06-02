@@ -1,41 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { Activity, CalendarDays } from "lucide-react"
 import StatsCard from "@/components/ui/StatsCard"
-import type { ContributionCalendar, ContributionWeek } from "@/lib/types"
+import type { ContributionWeek, ContributionsResponse } from "@/lib/types"
 
-export default function ContributionGraph({ username }: { username: string }) {
-  const [data, setData] = useState<{
-    contributions?: {
-      data?: {
-        user?: {
-          contributionsCollection?: {
-            contributionCalendar?: ContributionCalendar
-          }
-        }
-      }
-    }
-  } | null>(null)
-  const [loading, setLoading] = useState(true)
-
+export default function ContributionGraph({ data, loading }: { data: ContributionsResponse | null; loading: boolean }) {
   const year = new Date().getFullYear()
-
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/github/${username}/contributions`)
-        const result = await response.json()
-        setData(result)
-      } catch (error) {
-        console.error(error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [username])
 
   if (loading) {
     return (

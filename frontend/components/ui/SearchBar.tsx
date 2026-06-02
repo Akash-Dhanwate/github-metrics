@@ -1,18 +1,27 @@
 "use client"
 
-import { useState } from "react"
+import { useState , useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowRight, Loader2, Search, XCircle } from "lucide-react"
+import { apiGet } from "@/lib/api"
 
 export default function SearchBar() {
   const [username, setUsername] = useState("")
   const [searching, setSearching] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [history, setHistory] = useState<string[]>(() => {
-    if (typeof window === "undefined") return []
-    const saved = localStorage.getItem("searchHistory")
-    return saved ? JSON.parse(saved) : []
-  })
+  // 
+  const [history, setHistory] = useState<string[]>([])
+  useEffect(() => {
+  const saved = localStorage.getItem("searchHistory")
+
+  if (saved) {
+    try {
+      setHistory(JSON.parse(saved))
+    } catch {
+      setHistory([])
+    }
+  }
+}, [])
   const router = useRouter()
 
   const handleSearch = async (value = username) => {
@@ -27,17 +36,7 @@ export default function SearchBar() {
     setError(null)
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/github/${nextUsername}`)
-
-      if (response.status === 404) {
-        setError("User not found")
-        return
-      }
-
-      if (!response.ok) {
-        setError("Could not check this user")
-        return
-      }
+      await apiGet(`/github/${nextUsername}`)
 
       const newHistory = [nextUsername, ...history.filter((user) => user !== nextUsername)].slice(0, 5)
       setHistory(newHistory)

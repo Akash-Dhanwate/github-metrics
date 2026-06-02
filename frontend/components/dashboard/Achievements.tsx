@@ -1,28 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { Award } from "lucide-react"
 import type { Badge } from "@/lib/types"
 
-export default function Achievements({ username }: { username: string }) {
-  const [badges, setBadges] = useState<Badge[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    async function fetchBadges() {
-      try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/github/${username}/contributions`)
-        const result = await response.json()
-        setBadges(result.badges || [])
-      } catch (err) {
-        console.error(err)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchBadges()
-  }, [username])
-
+export default function Achievements({ badges, loading }: { badges: Badge[]; loading: boolean }) {
   if (loading) {
     return (
       <section className="rounded-lg border border-[#30363d] bg-[#161b22] p-5">

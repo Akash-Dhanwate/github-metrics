@@ -5,6 +5,7 @@ import Link from "next/link"
 import { ArrowLeft, GitBranch, GitCompare, GitFork, Loader2, Search, Star } from "lucide-react"
 import ProfileCard from "@/components/ui/ProfileCard"
 import StatsCard from "@/components/ui/StatsCard"
+import { apiGet } from "@/lib/api"
 import type { GithubProfile } from "@/lib/types"
 
 export default function ComparePage() {
@@ -22,9 +23,7 @@ export default function ComparePage() {
     setLoadingSlot(slot)
     setError(null)
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/github_analytics/${nextUsername}`)
-      if (!response.ok) throw new Error(`${nextUsername} was not found`)
-      const data = await response.json()
+      const data = await apiGet<GithubProfile>(`/github_analytics/${nextUsername}`)
       setUser(data)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Could not load user")

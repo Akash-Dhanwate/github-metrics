@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from app.schemas.language import LanguageResponse
 from app.services.github_service import (
     calculate_total_stars,
@@ -19,6 +19,15 @@ from app.schemas.github import UserResponse
 
 
 router = APIRouter()
+
+
+def _raise_if_repo_error(repos):
+    if isinstance(repos, dict) and "error" in repos:
+        raise HTTPException(status_code=404, detail=repos["error"])
+    if repos is None:
+        raise HTTPException(status_code=404, detail="Repositories not found")
+
+
 # ==================== info about the user ( followers , following , etc) ======================
 
 @router.get("/github/{username}", response_model=UserResponse)
@@ -26,7 +35,6 @@ def get_github_user(username: str):
     data = get_user(username)
     
     if data is None or "error" in data:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="User not found")
     
     return UserResponse(
@@ -43,8 +51,7 @@ def get_github_user(username: str):
 @router.get("/github/{username}/repos")
 def get_user_repos(username : str):
     repos = get_user_repositories(username)
-    if repos is None:
-        return {"error" : "Repositories not found"}
+    _raise_if_repo_error(repos)
     repo_list = []
     for repo in repos:
         repo_data = {
@@ -66,8 +73,7 @@ def get_user_repos(username : str):
 @router.get("/github/{username}/total-stars")
 def get_total_stars(username : str):
     repos = get_user_repositories(username)
-    if repos is None:
-        return {"error" : "repositories not found"}
+    _raise_if_repo_error(repos)
     return {
         "username": username , 
         "total_star": calculate_total_stars(repos)
@@ -80,8 +86,7 @@ def get_total_stars(username : str):
             )
 def get_languages(username : str):
     repos = get_user_repositories(username)
-    if repos is None:
-        return {"error": "repositories not found"}
+    _raise_if_repo_error(repos)
 
 
     return {
@@ -94,8 +99,7 @@ def get_languages(username : str):
 
 def get_top_repositories(username : str):
     repos = get_user_repositories(username)
-    if repos is None:
-        return {"error" : "repositories not found"}
+    _raise_if_repo_error(repos)
     sorted_repos = sorted(
         repos , 
         key = lambda repo : repo["stargazers_count"],
@@ -119,8 +123,7 @@ def get_top_repositories(username : str):
 @router.get("/github/{username}/total-forks")
 def get_total_forks(username : str):
     repos = get_user_repositories(username)
-    if repos is None:
-        return { "error" : "repositories not found"}
+    _raise_if_repo_error(repos)
     return {
         "total_forks" : calculate_total_forks(repos)
     }
@@ -137,8 +140,7 @@ def get_github_stats(username : str):
     - Most used programming language
     """
     repos = get_user_repositories(username)
-    if repos is None:
-        return {"error" : "repositories not found" , "username": username}
+    _raise_if_repo_error(repos)
     language_count = {}
     for repo in repos:
         lang = repo["language"]

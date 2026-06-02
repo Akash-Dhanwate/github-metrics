@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Users } from "lucide-react"
+import { apiGet } from "@/lib/api"
 import type { TrendingUser } from "@/lib/types"
 
 export default function PopularUsers() {
@@ -11,23 +12,30 @@ export default function PopularUsers() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let cancelled = false
+
     async function fetchTrending() {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/trending/users`)
-        const data = await response.json()
-        setUsers(data.users || [])
+        const data = await apiGet<{ users?: TrendingUser[] }>("/trending/users", 5 * 60_000)
+        if (!cancelled) setUsers(data.users || [])
       } catch (err) {
         console.error(err)
-        setUsers([
-          { username: "torvalds", name: "Linus Torvalds", avatar: "https://avatars.githubusercontent.com/u/1024025?v=4" },
-          { username: "gaearon", name: "Dan Abramov", avatar: "https://avatars.githubusercontent.com/u/810438?v=4" },
-          { username: "octocat", name: "The Octocat", avatar: "https://avatars.githubusercontent.com/u/583231?v=4" },
-        ])
+        if (!cancelled) {
+          setUsers([
+            { username: "torvalds", name: "Linus Torvalds", avatar: "https://avatars.githubusercontent.com/u/1024025?v=4" },
+            { username: "gaearon", name: "Dan Abramov", avatar: "https://avatars.githubusercontent.com/u/810438?v=4" },
+            { username: "octocat", name: "The Octocat", avatar: "https://avatars.githubusercontent.com/u/583231?v=4" },
+          ])
+        }
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
     fetchTrending()
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   return (

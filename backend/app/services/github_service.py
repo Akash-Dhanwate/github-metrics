@@ -1,6 +1,10 @@
 import os
 import requests
+from collections import OrderedDict
+from datetime import date, timedelta
 from dotenv import load_dotenv
+from threading import Lock
+from time import monotonic
 
 # Load environment variables
 load_dotenv()
@@ -18,6 +22,61 @@ session.headers.update({
     "Accept": "application/vnd.github+json"
 })
 
+REQUEST_TIMEOUT_SECONDS = 10
+MAX_CACHE_ITEMS = 256
+DEFAULT_CACHE_TTL_SECONDS = 300
+TRENDING_CACHE_TTL_SECONDS = 1800
+CONTRIBUTIONS_CACHE_TTL_SECONDS = 900
+MAX_REPO_PAGES = 3
+
+_cache = OrderedDict()
+_cache_lock = Lock()
+
+
+def _cache_get(key):
+    now = monotonic()
+    with _cache_lock:
+        entry = _cache.get(key)
+        if not entry:
+            return None
+
+        expires_at, value = entry
+        if expires_at <= now:
+            _cache.pop(key, None)
+            return None
+
+        _cache.move_to_end(key)
+        return value
+
+
+def _cache_set(key, value, ttl=DEFAULT_CACHE_TTL_SECONDS):
+    with _cache_lock:
+        _cache[key] = (monotonic() + ttl, value)
+        _cache.move_to_end(key)
+
+        while len(_cache) > MAX_CACHE_ITEMS:
+            _cache.popitem(last=False)
+
+
+def _github_get_json(url, *, params=None):
+    response = session.get(url, params=params, timeout=REQUEST_TIMEOUT_SECONDS)
+    print_rate_limit(response)
+
+    if response.status_code == 404:
+        return {"error": "User not found"}
+
+    if response.status_code == 403:
+        return {
+            "error": "Rate limit exceeded",
+            "remaining": response.headers.get("X-RateLimit-Remaining"),
+            "reset": response.headers.get("X-RateLimit-Reset")
+        }
+
+    if response.status_code != 200:
+        return {"error": f"GitHub API Error: {response.status_code}"}
+
+    return response.json()
+
 
 def print_rate_limit(response):
     remaining = response.headers.get("X-RateLimit-Remaining")
@@ -28,49 +87,59 @@ def print_rate_limit(response):
 
 
 def get_user(username: str):
-    url = f"https://api.github.com/users/{username}"
+    username = username.strip()
+    cache_key = ("user", username.lower())
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
 
-    response = session.get(url)
+    data = _github_get_json(f"https://api.github.com/users/{username}")
+    _cache_set(cache_key, data)
+    return data
 
-    print_rate_limit(response)
 
-    if response.status_code == 404:
-        return {"error": "User not found"}
+def _get_user_repositories_page(username: str, page: int):
+    cache_key = ("repos-page", username.lower(), page)
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
 
-    if response.status_code == 403:
-        return {
-            "error": "Rate limit exceeded",
-            "remaining": response.headers.get("X-RateLimit-Remaining"),
-            "reset": response.headers.get("X-RateLimit-Reset")
+    data = _github_get_json(
+        f"https://api.github.com/users/{username}/repos",
+        params={
+            "per_page": 100,
+            "page": page,
+            "sort": "updated",
+            "direction": "desc"
         }
-
-    if response.status_code != 200:
-        return {"error": f"GitHub API Error: {response.status_code}"}
-
-    return response.json()
+    )
+    _cache_set(cache_key, data)
+    return data
 
 
 def get_user_repositories(username: str):
-    url = f"https://api.github.com/users/{username}/repos"
+    username = username.strip()
+    cache_key = ("repos", username.lower())
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
 
-    response = session.get(url)
+    repos = []
+    for page in range(1, MAX_REPO_PAGES + 1):
+        page_data = _get_user_repositories_page(username, page)
+        if isinstance(page_data, dict) and "error" in page_data:
+            return page_data
 
-    print_rate_limit(response)
+        if not page_data:
+            break
 
-    if response.status_code == 404:
-        return {"error": "User not found"}
+        repos.extend(page_data)
 
-    if response.status_code == 403:
-        return {
-            "error": "Rate limit exceeded",
-            "remaining": response.headers.get("X-RateLimit-Remaining"),
-            "reset": response.headers.get("X-RateLimit-Reset")
-        }
+        if len(page_data) < 100:
+            break
 
-    if response.status_code != 200:
-        return {"error": f"GitHub API Error: {response.status_code}"}
-
-    return response.json()
+    _cache_set(cache_key, repos)
+    return repos
 
 
 # Analytics Helper Functions
@@ -108,6 +177,12 @@ def get_top_repos(repos, limit=5):
 
 
 def get_user_analytics(username: str):
+    username = username.strip()
+    cache_key = ("analytics", username.lower())
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     user = get_user(username)
 
     if "error" in user:
@@ -120,7 +195,7 @@ def get_user_analytics(username: str):
 
     top_repos = get_top_repos(repos)
 
-    return {
+    analytics = {
         "username": user["login"],
         "name": user["name"],
         "bio": user["bio"],
@@ -150,24 +225,33 @@ def get_user_analytics(username: str):
         ]
     }
 
+    _cache_set(cache_key, analytics)
+    return analytics
+
 def get_user_contribution_data(username: str):
     """Get user's contribution data from GitHub GraphQL"""
-    query = f"""
-    {{
-      user(login: "{username}") {{
-        contributionsCollection {{
-          contributionCalendar {{
+    username = username.strip()
+    cache_key = ("contributions", username.lower())
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    query = """
+    query($login: String!) {
+      user(login: $login) {
+        contributionsCollection {
+          contributionCalendar {
             totalContributions
-            weeks {{
-              contributionDays {{
+            weeks {
+              contributionDays {
                 contributionCount
                 date
-              }}
-            }}
-          }}
-        }}
-      }}
-    }}
+              }
+            }
+          }
+        }
+      }
+    }
     """
     
     headers = {
@@ -175,33 +259,42 @@ def get_user_contribution_data(username: str):
         "Content-Type": "application/json"
     }
     
-    response = requests.post(
+    response = session.post(
         "https://api.github.com/graphql",
-        json={"query": query},
-        headers=headers
+        json={"query": query, "variables": {"login": username}},
+        headers=headers,
+        timeout=REQUEST_TIMEOUT_SECONDS
     )
     
     if response.status_code == 200:
-        return response.json()
+        data = response.json()
+        _cache_set(cache_key, data, CONTRIBUTIONS_CACHE_TTL_SECONDS)
+        return data
     return None
 
 def get_trending_repositories():
     """Get trending repositories from GitHub search"""
+    cache_key = ("trending", "repositories")
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     url = "https://api.github.com/search/repositories"
+    since = (date.today() - timedelta(days=30)).isoformat()
     
     # Search for repos with most stars created in last 30 days
     params = {
-        "q": "stars:>1000 created:>2024-05-01",
+        "q": f"stars:>1000 created:>{since}",
         "sort": "stars",
         "order": "desc",
         "per_page": 10
     }
     
-    response = session.get(url, params=params)
+    response = session.get(url, params=params, timeout=REQUEST_TIMEOUT_SECONDS)
     
     if response.status_code == 200:
         repos = response.json().get("items", [])
-        return [
+        result = [
             {
                 "name": repo["name"],
                 "owner": repo["owner"]["login"],
@@ -214,11 +307,18 @@ def get_trending_repositories():
             }
             for repo in repos
         ]
+        _cache_set(cache_key, result, TRENDING_CACHE_TTL_SECONDS)
+        return result
     return []
 
 
 def get_trending_users():
     """Get trending users from GitHub search"""
+    cache_key = ("trending", "users")
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     url = "https://api.github.com/search/users"
     
     # Search for users with most followers
@@ -229,11 +329,11 @@ def get_trending_users():
         "per_page": 6
     }
     
-    response = session.get(url, params=params)
+    response = session.get(url, params=params, timeout=REQUEST_TIMEOUT_SECONDS)
     
     if response.status_code == 200:
         users = response.json().get("items", [])
-        return [
+        result = [
             {
                 "username": user["login"],
                 "avatar": user["avatar_url"],
@@ -241,19 +341,26 @@ def get_trending_users():
             }
             for user in users
         ]
+        _cache_set(cache_key, result, TRENDING_CACHE_TTL_SECONDS)
+        return result
     return []
 
 def get_repo_insights(username: str, repo_name: str):
     """Get detailed insights about a repository"""
+    cache_key = ("repo", username.lower(), repo_name.lower())
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     url = f"https://api.github.com/repos/{username}/{repo_name}"
     
-    response = session.get(url)
+    response = session.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
     if response.status_code != 200:
         return None
     
     repo = response.json()
     
-    return {
+    result = {
         "name": repo["name"],
         "description": repo["description"],
         "url": repo["html_url"],
@@ -273,13 +380,25 @@ def get_repo_insights(username: str, repo_name: str):
         "has_issues": repo["has_issues"],
     }
 
+    _cache_set(cache_key, result)
+    return result
+
 def get_user_badges(username: str):
     """Get user achievements/badges"""
+    username = username.strip()
+    cache_key = ("badges", username.lower())
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     user_data = get_user(username)
     if not user_data or "error" in user_data:
         return []
     
     repos = get_user_repositories(username)
+    if isinstance(repos, dict) and "error" in repos:
+        repos = []
+
     badges = []
     
     # Follower badges
@@ -327,7 +446,8 @@ def get_user_badges(username: str):
     languages = calculate_language_frequency(repos)
     if len(languages) >= 5:
         badges.append({"name": "Polyglot", "icon": "🌍", "desc": "5+ languages used"})
-    
+
+    _cache_set(cache_key, badges, CONTRIBUTIONS_CACHE_TTL_SECONDS)
     return badges
 
 

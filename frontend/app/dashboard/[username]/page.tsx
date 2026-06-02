@@ -14,7 +14,8 @@ import TrendingRepos from "@/components/home/TrendingRepos"
 import RepoCard from "@/components/ui/RepoCard"
 import RepoInsights from "@/components/ui/RepoInsights"
 import StatsCard from "@/components/ui/StatsCard"
-import type { GithubProfile, Repository } from "@/lib/types"
+import { apiGet } from "@/lib/api"
+import type { ContributionsResponse, GithubProfile, Repository } from "@/lib/types"
 
 export default function DashboardPage() {
   const params = useParams<{ username: string }>()
@@ -24,28 +25,59 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null)
   const [searchUsername, setSearchUsername] = useState("")
   const [searching, setSearching] = useState(false)
+  const [contributions, setContributions] = useState<ContributionsResponse | null>(null)
+  const [contributionsLoading, setContributionsLoading] = useState(true)
 
   useEffect(() => {
+    let cancelled = false
+
     async function fetchData() {
       try {
-        setLoading(true)
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/github_analytics/${params.username}`)
-
-        if (!response.ok) throw new Error("User not found")
-
-        const result = await response.json()
+        if (!cancelled) setLoading(true)
+        const result = await apiGet<GithubProfile>(`/github_analytics/${params.username}`)
+        if (cancelled) return
         setData(result)
         setSearchUsername(result.username)
         setError(null)
       } catch (err: unknown) {
+        if (cancelled) return
         setError(err instanceof Error ? err.message : "Failed to load profile")
         setData(null)
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
 
     if (params.username) fetchData()
+
+    return () => {
+      cancelled = true
+    }
+  }, [params.username])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function fetchContributions() {
+      try {
+        if (!cancelled) setContributionsLoading(true)
+        const result = await apiGet<ContributionsResponse>(`/github/${params.username}/contributions`, 5 * 60_000)
+        if (!cancelled) setContributions(result)
+      } catch (err) {
+        if (!cancelled) {
+          console.error(err)
+          setContributions(null)
+        }
+      } finally {
+        if (!cancelled) setContributionsLoading(false)
+      }
+    }
+
+    if (params.username) fetchContributions()
+
+    return () => {
+      cancelled = true
+    }
   }, [params.username])
 
   const handleSearch = async () => {
@@ -54,15 +86,10 @@ export default function DashboardPage() {
 
     setSearching(true)
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/github/${nextUsername}`)
-      if (!response.ok) {
-        setError("User not found")
-        return
-      }
-
+      await apiGet(`/github/${nextUsername}`)
       router.push(`/dashboard/${nextUsername}`)
     } catch {
-      setError("API is not reachable")
+      setError("User not found or API is not reachable")
     } finally {
       setSearching(false)
     }
@@ -157,8 +184,8 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          <Achievements username={data.username} />
-          <ContributionGraph username={data.username} />
+          <Achievements badges={contributions?.badges || []} loading={contributionsLoading} />
+          <ContributionGraph data={contributions} loading={contributionsLoading} />
           <RepoInsights username={data.username} repositories={data.top_repositories || []} />
 
           <section className="rounded-lg border border-[#30363d] bg-[#161b22] p-5">
