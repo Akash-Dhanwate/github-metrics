@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { ArrowLeft, GitBranch, GitFork, Loader2, Search, Star, Users } from "lucide-react"
@@ -124,8 +124,25 @@ export default function DashboardPage() {
     )
   }
 
-  const topLanguage = Object.keys(data.languages || {})[0] || "N/A"
+  // const topLanguage = Object.keys(data.languages || {})[0] || "N/A"
+//   const topLanguage = React.useMemo(() => {
+//   if (!data.languages) return "N/A";
 
+//   return Object.entries(data.languages)
+//     .reduce((max, current) =>
+//       Number(current[1]) > Number(max[1]) ? current : max
+//     )[0];
+// }, [data.languages]);
+
+
+const topLanguage = data?.languages
+  ? Object.entries(data.languages as Record<string, number>).reduce(
+      (max, current) =>
+        Number(current[1]) > Number(max[1]) ? current : max
+    )[0]
+  : "N/A";
+
+  
   return (
     <div className="min-h-screen bg-[#0d1117] text-[#e6edf3]">
       <header className="sticky top-0 z-30 border-b border-[#30363d] bg-[#010409]/95 backdrop-blur">

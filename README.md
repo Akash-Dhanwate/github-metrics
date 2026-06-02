@@ -56,15 +56,15 @@ Whether you're preparing for technical interviews, tracking your open-source con
 
 ### Dashboard
 
-![Dashboard](images/dashboard.png)
+![Dashboard](images/home.png)
 
 ### Profile Analytics
 
-![Profile Analytics](images/contribution.png)
+![Profile Analytics](images/profile.png)
 
 ### Developer Comparison
 
-![Developer Comparison](images/dashbord.png)
+![Developer Comparison](images/compare1.png)
 
 ### Trending Repositories & Users
 
