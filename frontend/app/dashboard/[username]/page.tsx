@@ -135,14 +135,16 @@ export default function DashboardPage() {
 // }, [data.languages]);
 
 
-const topLanguage = data?.languages
-  ? Object.entries(data.languages as Record<string, number>).reduce(
-      (max, current) =>
-        Number(current[1]) > Number(max[1]) ? current : max
-    )[0]
-  : "N/A";
+const topLanguage = (() => {
+  if (!data?.languages) return "N/A";
+  const entries = Object.entries(data.languages as Record<string, number>);
+  if (entries.length === 0) return "N/A";
+  return entries.reduce((max, current) =>
+    Number(current[1]) > Number(max[1]) ? current : max
+  )[0];
+})();
 
-  
+
   return (
     <div className="min-h-screen bg-[#0d1117] text-[#e6edf3]">
       <header className="sticky top-0 z-30 border-b border-[#30363d] bg-[#010409]/95 backdrop-blur">
