@@ -61,6 +61,8 @@ def _cache_set(key, value, ttl=DEFAULT_CACHE_TTL_SECONDS):
 def _github_get_json(url, *, params=None):
     response = session.get(url, params=params, timeout=REQUEST_TIMEOUT_SECONDS)
     print_rate_limit(response)
+    # these is newly added 
+    print(f"DEBUG STATUS: {response.status_code} | BODY: {response.text[:300]}")
 
     if response.status_code == 404:
         return {"error": "User not found"}
