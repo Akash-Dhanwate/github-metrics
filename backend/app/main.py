@@ -7,7 +7,9 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://github-metrics-1.onrender.com"
+        "https://github-metrics-1.onrender.com",
+        "https://github-metrics.learnaids2025.workers.dev",
+        "http://localhost:3000",
     ],
     allow_credentials=True,
     allow_methods=["*"],
