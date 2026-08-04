@@ -42,9 +42,8 @@ Whether you're preparing for technical interviews, tracking your open-source con
 ## 🎯 Live Demo -- comming soon 
 
 <div align="center">
-### [👉 Visit Live Demo](https://github-metrics-demo.com)
 
-*Coming Soon - GitHub Metrics Beta*
+![Visit Live Demo](https://github-metrics.learnaids2025.workers.dev/)
 
 </div>
 
@@ -59,8 +58,6 @@ Whether you're preparing for technical interviews, tracking your open-source con
 ![Dashboard](images/home.png)
 
 ### Profile Analytics
-
-<<<<<<< HEAD
 ![Profile Analytics](images/profile.png)
 
 ### Developer Comparison
@@ -95,9 +92,9 @@ Whether you're preparing for technical interviews, tracking your open-source con
 | **Repository Intelligence** | Advanced metrics for repository performance | ✅ |
 | **Real-Time Data** | Live GitHub API integration for current data | ✅ |
 | **User Search** | Quick search functionality for any GitHub user | ✅ |
-| **Export Functionality** | Export analytics as PDF or CSV | 🔄 |
+| **Export Functionality** | Export analytics as PDF or CSV | ✅ |
 | **Achievement Badges** | Display GitHub milestones and achievements | ✅ |
-| **Dark Mode Support** | Eye-friendly dark theme | 🔄 |
+| **Dark Mode Support** | Eye-friendly dark theme | ✅ |
 
 ---
 
@@ -446,8 +443,8 @@ Refer to `docs/DEPLOYMENT.md` for cloud platform-specific instructions.
 - [x] Contribution statistics
 - [x] Developer comparison dashboard
 - [x] Contribution heatmap
-- [ ] Export to PDF/CSV
-- [ ] Dark mode theme
+- [x] Export to PDF/CSV
+- [x] Dark mode theme
 - [ ] Advanced filtering options
 - [ ] Social sharing features
 - [ ] Leaderboards
