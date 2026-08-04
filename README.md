@@ -39,11 +39,11 @@ Whether you're preparing for technical interviews, tracking your open-source con
 
 ---
 
-## 🎯 Live Demo -- comming soon 
+## 🎯 Live Demo
 
 <div align="center">
 
-![Visit Live Demo](https://github-metrics.learnaids2025.workers.dev/)
+![Visit Live Demo]`https://github-metrics.learnaids2025.workers.dev/`
 
 </div>
 
