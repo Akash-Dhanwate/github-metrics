@@ -43,7 +43,7 @@ Whether you're preparing for technical interviews, tracking your open-source con
 
 <div align="center">
 
-![Visit Live Demo]`https://github-metrics.learnaids2025.workers.dev/`
+- **[Live Demo](https://github-metrics.learnaids2025.workers.dev/)** - Live Demo
 
 </div>
 
